@@ -1,0 +1,33 @@
+def extract_articles(self, file_path):
+    articles = []
+    try:
+        doc = fitz.open(file_path)
+        current_article = None
+        article_text = []
+        seen_articles = set()  # Tekrarları önlemek
+        
+        for page in doc:
+            text = page.get_text()
+            lines = text.split('\n')
+            for line in lines:
+                line = line.strip()
+                if re.match(r'^(MADDE|Madde)\s*\d+\s*[-–—]', line, re.IGNORECASE):
+                    normalized_title = re.sub(r'\s*[-–—]\s*', '-', line.upper())  # Standardize başlık
+                    if current_article and current_article not in seen_articles:
+                        articles.append({'title': current_article, 'text': '\n'.join(article_text)})
+                        seen_articles.add(current_article)
+                    current_article = normalized_title
+                    article_text = []
+                elif current_article:
+                    article_text.append(line)
+        
+        if current_article and current_article not in seen_articles:
+            articles.append({'title': current_article, 'text': '\n'.join(article_text)})
+            seen_articles.add(current_article)
+        
+        doc.close()
+        logger.info(f"{len(articles)} madde çıkarıldı")
+        return articles
+    except Exception as e:
+        logger.error(f"Madde çıkarma hatası: {str(e)}")
+        return []
